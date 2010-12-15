@@ -497,13 +497,13 @@ class Kohana_Tree extends ORM
 	protected function lock()
 	{
 		// lock table
-		//DB::query('lock', 'LOCK TABLE ' . Kohana::config('database')->default['table_prefix'].$this->_table_name . ' WRITE')->execute($this->_db);
+		DB::query('lock', 'LOCK TABLE ' . Kohana::config('database')->default['table_prefix'].$this->_table_name . ' WRITE')->execute($this->_db);
 	}
 
 	protected function unlock()
 	{
 		// unlock tables
-		//DB::query('unlock', 'UNLOCK TABLES')->execute($this->_db);
+		DB::query('unlock', 'UNLOCK TABLES')->execute($this->_db);
 	}
 
 	public function __get($column)
