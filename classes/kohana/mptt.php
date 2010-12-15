@@ -1,25 +1,59 @@
 <?php defined('SYSPATH') OR die('No direct access allowed.');
 /**
- *
  * Its a combination of a traditional MPTT tree and additional usefull data (parent id, level value)
- * Based on Ivan Botkin's MPTT implementation
+ *
+ * @see http://dev.mysql.com/tech-resources/articles/hierarchical-data.html
  *
  * @package    Leemo
  * @author     Leemo team
  * @copyright  Copyright (c) 2010 Leemo team
  */
-class Kohana_Tree extends ORM
+class Kohana_MPTT extends ORM
 {
+	/**
+	 * @var string
+	 */
 	protected $_id_column = 'id';
+
+	/**
+	 * @var string
+	 */
 	protected $_left_column = 'left';
+
+	/**
+	 * @var string
+	 */
 	protected $_right_column = 'right';
+
+	/**
+	 * @var string
+	 */
 	protected $_level_column = 'level';
+
+	/**
+	 * @var string
+	 */
 	protected $_parent_column = 'parent';
+
+	/**
+	 * @var array
+	 */
+	protected $_scope_columns = array();
+
+	/**
+	 * @var void
+	 */
 	protected $_sorting;
 
+	/**
+	 * Class constructor (overload basic ORM::__construct() method)
+	 *
+	 * @param  mixed  parameter for find()
+	 */
 	public function __construct($id = NULL)
 	{
-		foreach(array($this->_id_column, 
+		//We need to determine ORM-rows, that we use
+		foreach(array($this->_id_column,
 			$this->_left_column,
 			$this->_right_column,
 			$this->_level_column,
@@ -32,6 +66,13 @@ class Kohana_Tree extends ORM
 			);
 		}
 
+		//We need to determine scope-columns to
+		foreach($this->_scope_columns as $row => $condition)
+		{
+			$this->_table_columns[$row] = $condition;
+		}
+
+		//How do we sort?
 		if(!isset($this->_sorting))
 		{
 			$this->_sorting = array($this->_left_column => 'ASC');
@@ -41,13 +82,12 @@ class Kohana_Tree extends ORM
 	}
 
 	/*
-	 * Insert operations
+	 * Save current tree (overload basic ORM::save() method)
 	 *
+	 * @return Kohana_ORM
 	 */
-
 	public function save()
 	{
-		// overload basic ORM::save() method
 		if(!$this->loaded())
 		{
 			if($this->parent())
@@ -65,6 +105,12 @@ class Kohana_Tree extends ORM
 		}
 	}
 
+	/**
+	 * Creates the root element
+	 *
+	 * @param  mixed  Scope values
+	 * @return  Kohana_ORM
+	 */
 	public function make_root($scope = NULL)
 	{
 		// save node as root
@@ -78,6 +124,13 @@ class Kohana_Tree extends ORM
 		return parent::save();
 	}
 
+	/**
+	 * Creates the child element
+	 *
+	 * @param  mixed    ID or parent object
+	 * @param  boolean  First flag
+	 * @return  Kohana_ORM
+	 */
 	public function make_child($id, $first = FALSE)
 	{
 		// inserts node as direct child for $id node
@@ -97,6 +150,7 @@ class Kohana_Tree extends ORM
 		}
 
 		$this->add_space($left, 2);
+
 		$this->{$this->_parent_column} = $id->pk();
 		$this->{$this->_level_column} = $id->level() + 1;
 		$this->{$this->_left_column} = $left;
@@ -109,6 +163,13 @@ class Kohana_Tree extends ORM
 		return $this;
 	}
 
+	/**
+	 * Inserts node as next/prev sibling
+	 *
+	 * @param  mixed    Sibling ID
+	 * @param  boolean  Next/prev flag
+	 * @return Kohana_ORM
+	 */
 	public function insert_near($id, $before = FALSE)
 	{
 		// inserts node as next/prev sibling
@@ -181,11 +242,11 @@ class Kohana_Tree extends ORM
 		$oldlft = $this->left();
 		$level = $id->level() + 1;
 		$delta = $left - $this->left();
-		
+
 		if($delta < 0) $delta = '('.$delta.')';
 
 		$deltalevel = $level - $this->level();
-		
+
 		if($deltalevel < 0) $deltalevel = '('.$deltalevel.')';
 
 		$this->lock();
@@ -225,11 +286,11 @@ class Kohana_Tree extends ORM
 		$oldlft = $this->left() + 1;
 		$level = $id->level() + 1;
 		$delta = $left - $oldlft;
-		
+
 		if($delta < 0) $delta = '('.$delta.')';
 
 		$deltalevel = $level - $this->level() - 1;
-		
+
 		if($deltalevel < 0) $deltalevel = '('.$deltalevel.')';
 
 		$this->lock();
@@ -424,10 +485,9 @@ class Kohana_Tree extends ORM
 			$id = self::factory($this->_object_name, $id);
 		}
 
-		if($this->left() <= $id->left())
-			return FALSE;
-		if($this->right() >= $id->right())
-			return FALSE;
+		if($this->left() <= $id->left()) return FALSE;
+		if($this->right() >= $id->right()) return FALSE;
+
 		return TRUE;
 	}
 
@@ -468,13 +528,11 @@ class Kohana_Tree extends ORM
 		DB::update($this->_table_name)
 			->set(array($this->_left_column => DB::expr('"'.$this->_left_column.'" + ' . $size)))
 			->where($this->_left_column, " >= ", $start)
-			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 
 		DB::update($this->_table_name)
 			->set(array($this->_right_column => DB::expr('"'.$this->_right_column.'" + ' . $size)))
 			->where($this->_right_column, " >= ", $start)
-			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 	}
 
@@ -484,13 +542,11 @@ class Kohana_Tree extends ORM
 		DB::update($this->_table_name)
 			->set(array($this->_left_column => DB::expr('"'.$this->_left_column.'" - ' . $size)))
 			->where($this->_left_column, " >= ", $start)
-			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 
 		DB::update($this->_table_name)
 			->set(array($this->_right_column => DB::expr('"'.$this->_right_column.'" - ' . $size)))
 			->where($this->_right_column, " >= ", $start)
-			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 	}
 
