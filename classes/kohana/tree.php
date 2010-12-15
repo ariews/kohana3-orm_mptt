@@ -10,15 +10,28 @@
  */
 class Kohana_Tree extends ORM
 {
-	protected $_left_column = 'lft';
-	protected $_right_column = 'rgt';
-	protected $_level_column = 'lvl';
-	protected $_scope_column = 'scope';
-	protected $_parent_column = 'parent_id';
+	protected $_id_column = 'id';
+	protected $_left_column = 'left';
+	protected $_right_column = 'right';
+	protected $_level_column = 'level';
+	protected $_parent_column = 'parent';
 	protected $_sorting;
 
 	public function __construct($id = NULL)
 	{
+		foreach(array($this->_id_column, 
+			$this->_left_column,
+			$this->_right_column,
+			$this->_level_column,
+			$this->_parent_column) as $row)
+		{
+			$this->_table_columns[$row] = array
+			(
+				'data_type'		=> 'int',
+				'is_nullable'	=> FALSE
+			);
+		}
+
 		if(!isset($this->_sorting))
 		{
 			$this->_sorting = array($this->_left_column => 'ASC');
@@ -57,16 +70,6 @@ class Kohana_Tree extends ORM
 		// save node as root
 		if($this->loaded()) throw new Kohana_Exception('Cannot insert the same node twice');
 
-		if(is_null($scope))
-		{
-			$scope = self::get_next_scope();
-		}
-		elseif(self::scope_available($scope) === FALSE)
-		{
-			$scope = self::get_next_scope();
-		}
-
-		$this->{$this->_scope_column} = $scope;
 		$this->{$this->_level_column} = 1;
 		$this->{$this->_left_column} = 1;
 		$this->{$this->_right_column} = 2;
@@ -86,19 +89,18 @@ class Kohana_Tree extends ORM
 
 		if($first === TRUE)
 		{
-			$lft = $id->{$this->_left_column} + 1;
+			$left = $id->{$this->_left_column} + 1;
 		}
 		else
 		{
-			$lft = $id->{$this->_right_column};
+			$left = $id->{$this->_right_column};
 		}
 
-		$this->{$this->_scope_column} = $id->scope();
-		$this->add_space($lft, 2);
+		$this->add_space($left, 2);
 		$this->{$this->_parent_column} = $id->pk();
 		$this->{$this->_level_column} = $id->level() + 1;
-		$this->{$this->_left_column} = $lft;
-		$this->{$this->_right_column} = $lft + 1;
+		$this->{$this->_left_column} = $left;
+		$this->{$this->_right_column} = $left + 1;
 
 		parent::save();
 
@@ -120,26 +122,24 @@ class Kohana_Tree extends ORM
 
 		if($before)
 		{
-			$lft = $id->left();
+			$left = $id->left();
 		}
 		else
 		{
-			$lft = $id->right() + 1;
+			$left = $id->right() + 1;
 		}
 
-		$this->{$this->_scope_column} = $id->scope();
-
 		$this->lock();
-		$this->add_space($lft);
+		$this->add_space($left);
 
-		$this->{$this->_left_column} = $lft;
-		$this->{$this->_right_column} = $lft + 1;
+		$this->{$this->_left_column} = $left;
+		$this->{$this->_right_column} = $left + 1;
 		$this->{$this->_parent_column} = $id->parent();
 		$this->{$this->_level_column} = $id->level();
 
 		parent::save();
-
 		$this->unlock();
+		return $this;
 	}
 
 	public function delete($id = NULL)
@@ -160,7 +160,6 @@ class Kohana_Tree extends ORM
 		DB::delete($target->_table_name)
 			->where($target->_left_column, '>=', $target->left())
 			->where($target->_left_column, '<=', $target->right())
-			->where($target->_scope_column, '=', $target->scope())
 			->execute($target->_db);
 
 		$target->clear_space($target->left(), $target->size());
@@ -178,10 +177,10 @@ class Kohana_Tree extends ORM
 		if($this->is_in_descendants($id)) throw new Kohana_Exception('Cannot move nodes to themself');
 
 		$ids = $this->get_subtree(TRUE)->primary_key_array();
-		$lft = ($first == TRUE ? $id->left() + 1 : $id->right());
+		$left = ($first == TRUE ? $id->left() + 1 : $id->right());
 		$oldlft = $this->left();
 		$level = $id->level() + 1;
-		$delta = $lft - $this->left();
+		$delta = $left - $this->left();
 		
 		if($delta < 0) $delta = '('.$delta.')';
 
@@ -190,24 +189,17 @@ class Kohana_Tree extends ORM
 		if($deltalevel < 0) $deltalevel = '('.$deltalevel.')';
 
 		$this->lock();
-		// temporary setting scope to 0
-		DB::update($this->_table_name)
-			->in($this->primary_key, $ids)
-			->set(array($this->_scope_column => 0))
-			->execute($this->_db);
 
 		$this->clear_space($oldlft, $this->size());
-		$this->{$this->_scope_column} = $id->scope();
-		$this->add_space($lft, $this->size());
+		$this->add_space($left, $this->size());
 
 		DB::update($this->_table_name)
 			->in($this->primary_key, $ids)
 			->set(array
 			(
-				$this->_left_column => DB::expr($this->_left_column.' + '.$delta),
-				$this->_right_column => DB::expr($this->_right_column.' + '.$delta),
-				$this->_level_column => DB::expr($this->_level_column.' + '.$deltalevel),
-				$this->_scope_column => $id->scope(),
+				$this->_left_column => DB::expr('"'.$this->_left_column.'" + '.$delta),
+				$this->_right_column => DB::expr('"'.$this->_right_column.'" + '.$delta),
+				$this->_level_column => DB::expr('"'.$this->_level_column.'" + '.$deltalevel),
 			))
 			->execute($this->_db);
 
@@ -229,10 +221,10 @@ class Kohana_Tree extends ORM
 		}
 
 		$ids = $this->get_subtree(FALSE)->primary_key_array();
-		$lft = ($first == TRUE ? $id->left() + 1 : $id->right());
+		$left = ($first == TRUE ? $id->left() + 1 : $id->right());
 		$oldlft = $this->left() + 1;
 		$level = $id->level() + 1;
-		$delta = $lft - $oldlft;
+		$delta = $left - $oldlft;
 		
 		if($delta < 0) $delta = '('.$delta.')';
 
@@ -242,23 +234,16 @@ class Kohana_Tree extends ORM
 
 		$this->lock();
 
-		DB::update($this->_table_name)
-						->in($this->primary_key, $ids)
-						->set(array($this->_scope_column => 0))
-						->execute($this->_db);
 		$this->clear_space($oldlft, $this->size() - 2);
-		// this is need for correct add_space() work
-		$this->{$this->_scope_column} = $id->scope();
-		$this->add_space($lft, $this->size() - 2);
+		$this->add_space($left, $this->size() - 2);
 
 		DB::update($this->_table_name)
 			->in($this->primary_key, $ids)
 			->set(array
 			(
-				$this->_left_column => DB::expr($this->_left_column.' + '.$delta),
-				$this->_right_column => DB::expr($this->_right_column.' + '.$delta),
-				$this->_level_column => DB::expr($this->_level_column.' + '.$deltalevel),
-				$this->_scope_column => $id->scope(),
+				$this->_left_column => DB::expr('"'.$this->_left_column.'" + '.$delta),
+				$this->_right_column => DB::expr('"'.$this->_right_column.'" + '.$delta),
+				$this->_level_column => DB::expr('"'.$this->_level_column.'" + '.$deltalevel),
 			))->execute($this->_db);
 
 		DB::update($this->_table_name)
@@ -289,8 +274,7 @@ class Kohana_Tree extends ORM
 		{
 			// only current root
 			return self::factory($this->_object_name)
-				->where($this->_scope_column, '=', $scope)
-				->andwhere($this->_left_column, '=', 1)
+				->where($this->_left_column, '=', 1)
 				->find();
 		}
 	}
@@ -308,7 +292,6 @@ class Kohana_Tree extends ORM
 				->from($this->_table_name)
 				->where($this->_left_column, ' <'.$suffix, $this->left())
 				->where($this->_right_column, ' >'.$suffix, $this->right())
-				->where($this->_scope_column, '=', $this->scope())
 				->execute($this->_db);
 		}
 		else
@@ -317,7 +300,6 @@ class Kohana_Tree extends ORM
 			return self::factory($this->_object_name)
 				->where($this->_left_column, ' <'.$suffix, $this->left())
 				->where($this->_right_column, ' >'.$suffix, $this->right())
-				->where($this->_scope_column, '=', $this->scope())
 				->find_all();
 		}
 	}
@@ -334,7 +316,6 @@ class Kohana_Tree extends ORM
 		return self::factory($this->_object_name)
 			->where($this->_left_column, " >", $this->left())
 			->where($this->_right_column, " <", $this->right())
-			->where($this->_scope_column, "=", $this->scope())
 			->where($this->_level_column, "=", $this->level() + 1)
 			->find_all();
 	}
@@ -346,7 +327,6 @@ class Kohana_Tree extends ORM
 		return self::factory($this->_object_name)
 			->where($this->_left_column, " >", $suffix . $this->left())
 			->where($this->_right_column, " <", $suffix . $this->right())
-			->where($this->_scope_column, "=", $this->scope())
 			->find_all();
 	}
 
@@ -354,8 +334,6 @@ class Kohana_Tree extends ORM
 	{
 		// returns full tree (with or without scope checking)
 		$result = self::factory($this->_object_name);
-		if($use_scope) $result->where($this->_scope_column, "=", $this->{$this->_scope_column});
-		if($use_scope == FALSE) $result->order_by($this->_scope_column, 'ASC')->order_by($this->_left_column, 'ASC');
 
 		return ($result->find_all());
 	}
@@ -366,8 +344,7 @@ class Kohana_Tree extends ORM
 		return self::factory($this->_object_name)
 			->where($this->_left_column, " >", $suffix . $this->left())
 			->where($this->_right_column, " <", $suffix . $this->right())
-			->where($this->_left_column, "=", DB::expr($this->_right_column . " - 1"))
-			->where($this->_scope_column, "=", $this->scope())
+			->where($this->_left_column, "=", DB::expr('"'.$this->_right_column.'" - 1'))
 			->find_all();
 	}
 
@@ -395,11 +372,6 @@ class Kohana_Tree extends ORM
 	public function level()
 	{
 		return $this->{$this->_level_column};
-	}
-
-	public function scope()
-	{
-		return $this->{$this->_scope_column};
 	}
 
 	public function parent()
@@ -452,8 +424,6 @@ class Kohana_Tree extends ORM
 			$id = self::factory($this->_object_name, $id);
 		}
 
-		if($this->scope() != $id->scope())
-			return FALSE;
 		if($this->left() <= $id->left())
 			return FALSE;
 		if($this->right() >= $id->right())
@@ -496,15 +466,15 @@ class Kohana_Tree extends ORM
 		// add space for adding/inserting nodes
 		// $this->scope should be set before adding space!
 		DB::update($this->_table_name)
-			->set(array($this->_left_column => DB::expr($this->_left_column . ' + ' . $size)))
+			->set(array($this->_left_column => DB::expr('"'.$this->_left_column.'" + ' . $size)))
 			->where($this->_left_column, " >= ", $start)
-			->where($this->_scope_column, "=", $this->scope())
+			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 
 		DB::update($this->_table_name)
-			->set(array($this->_right_column => DB::expr($this->_right_column . ' + ' . $size)))
+			->set(array($this->_right_column => DB::expr('"'.$this->_right_column.'" + ' . $size)))
 			->where($this->_right_column, " >= ", $start)
-			->where($this->_scope_column, "=", $this->scope())
+			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 	}
 
@@ -512,52 +482,28 @@ class Kohana_Tree extends ORM
 	{
 		// remove space after deleting/moving node
 		DB::update($this->_table_name)
-			->set(array($this->_left_column => DB::expr($this->_left_column . ' - ' . $size)))
+			->set(array($this->_left_column => DB::expr('"'.$this->_left_column.'" - ' . $size)))
 			->where($this->_left_column, " >= ", $start)
-			->where($this->_scope_column, "=", $this->scope())
+			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 
 		DB::update($this->_table_name)
-			->set(array($this->_right_column => DB::expr($this->_right_column . ' - ' . $size)))
+			->set(array($this->_right_column => DB::expr('"'.$this->_right_column.'" - ' . $size)))
 			->where($this->_right_column, " >= ", $start)
-			->where($this->_scope_column, "=", $this->scope())
+			//->where($this->_scope_column, "=", $this->scope())
 			->execute($this->_db);
 	}
 
 	protected function lock()
 	{
 		// lock table
-		DB::query('lock', 'LOCK TABLE ' . $this->_table_name . ' WRITE')->execute($this->_db);
+		//DB::query('lock', 'LOCK TABLE ' . Kohana::config('database')->default['table_prefix'].$this->_table_name . ' WRITE')->execute($this->_db);
 	}
 
 	protected function unlock()
 	{
 		// unlock tables
-		DB::query('unlock', 'UNLOCK TABLES')->execute($this->_db);
-	}
-
-	protected function scope_available($scope)
-	{
-		// checking for supplied scope available
-		return !self::factory($this->_object_name)
-			->where($this->_scope_column, "=", $scope)
-			->count_all();
-	}
-
-	protected function get_next_scope()
-	{
-		// returns available value for scope
-		$scope = DB::select(DB::expr('IFNULL(MAX(`' . $this->_scope_column . '`), 0) as scope'))
-			->from($this->_table_name)
-			->execute($this->_db)
-			->current();
-
-		if($scope AND intval($scope['scope']) > 0)
-		{
-			return (int)$scope['scope'] + 1;
-		}
-
-		return 1;
+		//DB::query('unlock', 'UNLOCK TABLES')->execute($this->_db);
 	}
 
 	public function __get($column)
