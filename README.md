@@ -1,7 +1,4 @@
-ORM_MPTT module for Kohana 3
+Model_MPTT for Kohana 3 PHP framework
+=====================================
 
-Authors:
-
-- Kiall Mac Innes
-- Mathew Davies
-- Mike Parkin
+Documentation comming soon...
