@@ -1,4 +1,4 @@
-MPTT class for Kohana CMS
-=========================
+MPTT class for Kohana PHP framework
+===================================
 
 Documentation coming soon...
