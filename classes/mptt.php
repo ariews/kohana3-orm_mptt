@@ -4,8 +4,8 @@
  *
  * @see http://dev.mysql.com/tech-resources/articles/hierarchical-data.html
  *
- * @package    Leemo
- * @author     Leemo team
- * @copyright  Copyright (c) 2010 Leemo team
+ * @package    MPTT
+ * @author     Alexey Popov
+ * @copyright  Copyright (c) 2010 Alexey Popov
  */
 class MPTT extends Kohana_MPTT { }

@@ -1,4 +1,7 @@
-MPTT class for Kohana PHP framework
-===================================
+Kohana_MPTT module for Kohana 3
 
-Documentation coming soon...
+Authors:
+
+- Kiall Mac Innes
+- Mathew Davies
+- Mike Parkin
