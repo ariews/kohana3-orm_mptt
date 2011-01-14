@@ -5,6 +5,14 @@ This module apllied Joe Celko's Nested Sets algorythm for Kohana PHP framework.
 
 This module based on [kohana-mptt](https://github.com/kiall/kohana3-orm_mptt) module by [kiall](https://github.com/kiall/)
 
+Installation
+------------
+
+1. `git submodule add https://github.com/Leemo/kohana-mptt.git modules/mptt`
+2. `cd modules/mptt && git submodule update --init`
+3. Enable mptt module in your bootstrap.php file
+4. Extend `ORM_MPTT`
+
 Features
 --------
 
