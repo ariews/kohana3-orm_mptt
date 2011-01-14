@@ -3,7 +3,7 @@ MPTT (Modified Preorder Tree Traversal) module for Kohana 3
 
 This module apllied Joe Celko's Nested Sets algorythm for Kohana PHP framework.
 
-This module based on [kohana-mptt](https://github.com/kiall/kohana3-orm_mptt) module by [kiall](https://github.com/kiall/)
+This module based on [kohana3-orm_mptt](https://github.com/kiall/kohana3-orm_mptt) module by [kiall](https://github.com/kiall/)
 
 Installation
 ------------
