@@ -15,19 +15,19 @@ abstract class Kohana_Model_MPTT extends ORM
 	 * @var string left column name.
 	 */
 	public $left_column = 'lft';
-	
+
 	/**
 	 * @access public
 	 * @var string right column name.
 	 */
 	public $right_column = 'rgt';
-	
+
 	/**
 	 * @access public
 	 * @var string level column name.
 	 */
 	public $level_column = 'lvl';
-	
+
 	/**
 	 * @access public
 	 * @var string scope column name.
@@ -68,10 +68,11 @@ abstract class Kohana_Model_MPTT extends ORM
 	public function new_scope($scope, array $additional_fields = array())
 	{
 		// Make sure the specified scope doesn't already exist.
-		$search = ORM_MPTT::factory($this->_object_name)->where($this->scope_column, '=', $scope)->find_all();
+		$search = ORM_MPTT::factory($this->_object_name)
+			->where($this->scope_column, '=', $scope)
+			->find_all();
 
-		if ($search->count() > 0 )
-			return FALSE;
+		if ($search->count() > 0) return FALSE;
 
 		// Create a new root node in the new scope.
 		$this->{$this->left_column} = 1;
@@ -100,14 +101,20 @@ abstract class Kohana_Model_MPTT extends ORM
 	 */
 	protected function lock()
 	{
-		$lock = $this->_db->query(Database::SELECT, 'SELECT GET_LOCK("' . Kohana::$environment . '-' . $this->_table_name . '", 30) AS l', TRUE);
+		$lock = $this->_db->query(Database::SELECT, 'SELECT GET_LOCK("'.Kohana::$environment.'-'.$this->_table_name.'", 30) AS l', TRUE);
 
 		if ($lock['l']->l == 0)
+		{
 			return $this->lock(); // Unable to obtain lock, retry.
-		else if ($lock['l']->l == 1)
+		}
+		elseif ($lock['l']->l == 1)
+		{
 			return $this; // Success
+		}
 		else
+		{
 			throw new Exception('Unable to obtain MPTT lock'); // Unknown Error handle this.. better
+		}
 	}
 
 	/**
@@ -117,7 +124,7 @@ abstract class Kohana_Model_MPTT extends ORM
 	 */
 	protected function unlock()
 	{
-		$this->_db->query(Database::SELECT, 'SELECT RELEASE_LOCK("' . Kohana::$environment . '-' . $this->_table_name . '") AS l', TRUE);
+		$this->_db->query(Database::SELECT, 'SELECT RELEASE_LOCK("'.Kohana::$environment.'-'.$this->_table_name.'") AS l', TRUE);
 
 		return $this;
 	}
@@ -214,11 +221,11 @@ abstract class Kohana_Model_MPTT extends ORM
 	 */
 	public function root($scope = NULL)
 	{
-		if ($scope === NULL && $this->loaded())
+		if ($scope === NULL AND $this->loaded())
 		{
 			$scope = $this->{$this->scope_column};
 		}
-		elseif ($scope === NULL && ! $this->loaded())
+		elseif ($scope === NULL AND ! $this->loaded())
 		{
 			return FALSE;
 		}
@@ -380,7 +387,7 @@ abstract class Kohana_Model_MPTT extends ORM
 		$this->_db->query(Database::UPDATE, 'UPDATE '.$this->_table_name.' SET `'.$this->left_column.'` = `'.$this->left_column.'` - '.$size.' WHERE `'.$this->left_column.'` >= '.$start.' AND `'.$this->scope_column.'` = '.$this->{$this->scope_column}, FALSE);
 		$this->_db->query(Database::UPDATE, 'UPDATE '.$this->_table_name.' SET `'.$this->right_column.'` = `'.$this->right_column.'` - '.$size.' WHERE `'.$this->right_column.'` >= '.$start.' AND `'.$this->scope_column.'` = '.$this->{$this->scope_column}, FALSE);
 	}
-	
+
 	/**
 	 * Insert a node
 	 *
@@ -424,7 +431,7 @@ abstract class Kohana_Model_MPTT extends ORM
 
 		return $this;
 	}
-	
+
 	/**
 	 * Inserts a new node to the left of the target node.
 	 *
@@ -615,8 +622,7 @@ abstract class Kohana_Model_MPTT extends ORM
 	 */
 	protected function move($target, $left_column, $left_offset, $level_offset, $allow_root_target)
 	{
-		if (!$this->loaded())
-			return FALSE;
+		if ( ! $this->loaded()) return FALSE;
 
 		// Make sure we have the most upto date version of this AFTER we lock
 		$this->lock()->reload();
@@ -643,7 +649,7 @@ abstract class Kohana_Model_MPTT extends ORM
 			return FALSE;
 		}
 
-		$left_offset = ($left_column === TRUE ? $target->{$this->left_column} : $target->{$this->right_column}) + $left_offset;
+		$left_offset = (($left_column === TRUE) ? $target->{$this->left_column} : $target->{$this->right_column}) + $left_offset;
 		$level_offset = $target->{$this->level_column} - $this->{$this->level_column} + $level_offset;
 
 		$size = $this->get_size();
@@ -670,7 +676,7 @@ abstract class Kohana_Model_MPTT extends ORM
 			$this->update_path();
 			parent::save();
 		}
-		
+
 		$this->unlock();
 
 		return $this;
@@ -767,7 +773,7 @@ abstract class Kohana_Model_MPTT extends ORM
 		}
 
 		// Check to ensure that all nodes have a "correct" level
-		//TODO
+		// TODO
 
 		return TRUE;
 	}
@@ -781,10 +787,10 @@ abstract class Kohana_Model_MPTT extends ORM
 
 		foreach ($parents as $parent)
 		{
-			$path .= $this->path_separator . trim($parent->{$this->path_part_column});
+			$path .= $this->path_separator.trim($parent->{$this->path_part_column});
 		}
 
-		$path .= $this->path_separator . trim($this->{$this->path_part_column});
+		$path .= $this->path_separator.trim($this->{$this->path_part_column});
 
 		$path = trim($path, $this->path_separator);
 
