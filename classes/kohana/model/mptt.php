@@ -552,13 +552,14 @@ class Kohana_Model_MPTT extends ORM
 	 * Overloaded save method
 	 *
 	 * @access public
+	 * @param  Validation $validation Validation object
 	 * @return Model_MPTT|bool
 	 */
-	public function save()
+	public function save(Validation $validation = NULL)
 	{
 		if ($this->loaded() === TRUE)
 		{
-			return parent::save();
+			return parent::save($validation);
 		}
 
 		return FALSE;
