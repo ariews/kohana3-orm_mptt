@@ -346,12 +346,13 @@ class Kohana_Model_MPTT extends ORM
 	 */
 	public function descendants($self = FALSE, $direction = 'ASC')
 	{
-		$left_operator = $self ? '>=' : '>';
-		$right_operator = $self ? '<=' : '<';
+		$left_key_range = array(
+			$self ? $this->{$this->_left_column} : ($this->{$this->_left_column} + 1),
+			$this->{$this->_right_column},
+		);
 
 		return Model_MPTT::factory($this->_object_name)
-			->where($this->_left_column, $left_operator, $this->{$this->_left_column})
-			->where($this->_right_column, $right_operator, $this->{$this->_right_column})
+			->where($this->_left_column, 'BETWEEN', $left_key_range)
 			// ->where($this->scope_column, '=', $this->{$this->scope_column})
 			->order_by($this->_left_column, $direction);
 	}
