@@ -821,7 +821,7 @@ class Kohana_Model_MPTT extends ORM
 	 * @return type
 	 */
 	public function verify_scope($scope)
-	{ echo Kohana::debug($scope); die();
+	{
 		$root = $this->root($scope);
 
 		$end = $root->{$this->_right_column};
